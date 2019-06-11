@@ -1,8 +1,9 @@
-import { Tooltip, Button, Table, Page, Menu, Icon, Input, Form, Modal, MenuItem, FormItem } from 'iview'
+import { Tooltip, Button, Table, Page, Menu,Poptip, Icon, Input, Form, Modal, MenuItem, FormItem } from 'iview'
 
 const iview = {
     install: function (Vue) {
         Vue.component('Tooltip', Tooltip)
+        Vue.component('Poptip', Poptip)
         Vue.component('Button', Button)
         Vue.component('Table', Table)
         Vue.component('Menu', Menu)

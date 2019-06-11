@@ -7,6 +7,35 @@
 <template>
     <div>
         <div class="search-con-top">
+            <Input
+                clearable
+                prefix="ios-contact"
+                style="width: 180px"
+                placeholder="户主"
+                v-model="search.house"
+            />
+            <Input
+                clearable
+                prefix="ios-call"
+                style="width: 180px"
+                placeholder="联系方式"
+                v-model="search.contact"
+            />
+            <Input
+                clearable
+                prefix="ios-home"
+                style="width: 180px"
+                placeholder="住址"
+                v-model="search.address"
+            />
+            <Input
+                clearable
+                prefix="ios-create"
+                style="width: 180px"
+                placeholder="备注"
+                v-model="search.remark"
+            />
+            <Button @click="getDataList" type="primary" icon="md-search"></Button>
             <Button type="primary" @click="modalShow = true" icon="md-add"></Button>
         </div>
         <Modal
@@ -111,6 +140,15 @@ export default {
                 address: "",
                 remark: ""
             },
+            search: {
+                house: "",
+                contact: "",
+                address: "",
+                remark: "",
+                sort: "ASC",
+                pageIndex: 1,
+                pageSize: 120
+            },
             ruleValidate: {
                 house: [
                     {
@@ -151,7 +189,6 @@ export default {
                     }
                 ]
             },
-            searchParams: {},
             search: {
                 house: "",
                 remark: "",
@@ -248,21 +285,36 @@ export default {
                     fixed: "right",
                     render: (h, params) => {
                         return h("div", [
-                            h("Button", {
-                                props: {
-                                    type: "primary",
-                                    size: "small",
-                                    icon: "md-list-box"
-                                },
-                                attrs: {
-                                    title: "查看记录明细"
-                                },
-                                on: {
-                                    click: () => {
-                                        this.total(params.row);
+                            h(
+                                "Poptip",
+                                {
+                                    props: {
+                                        confirm: true,
+                                        transfer: true,
+                                        title: "你确定要删除吗？"
+                                    },
+                                    style: {
+                                        textAlign: "left"
+                                    },
+                                    on: {
+                                        "on-ok": () => {
+                                            this.del(params.row.id);
+                                        }
                                     }
-                                }
-                            }),
+                                },
+                                [
+                                    h("Button", {
+                                        props: {
+                                            type: "error",
+                                            size: "small",
+                                            icon: "md-trash"
+                                        },
+                                        attrs: {
+                                            title: "删除"
+                                        }
+                                    })
+                                ]
+                            ),
                             h("Button", {
                                 props: {
                                     type: "primary",
@@ -283,19 +335,19 @@ export default {
                             }),
                             h("Button", {
                                 props: {
-                                    type: "error",
+                                    type: "primary",
                                     size: "small",
-                                    icon: "md-trash"
+                                    icon: "md-list-box"
                                 },
                                 attrs: {
-                                    title: "删除"
+                                    title: "查看记录明细"
                                 },
                                 style: {
                                     "margin-left": "5px"
                                 },
                                 on: {
                                     click: () => {
-                                        this.del(params.row);
+                                        this.total(params.row);
                                     }
                                 }
                             })
@@ -314,11 +366,12 @@ export default {
     methods: {
         getDataList(method) {
             this.tableLoading = true;
-            if (method === "search") {
-                this.searchParams = JSON.parse(JSON.stringify(this.search));
-            }
+            this.searchParams = JSON.parse(JSON.stringify(this.search));
             if (typeof method === "number") {
+                this.search.pageIndex = method;
                 this.searchParams.pageIndex = method;
+            } else {
+                this.search.pageIndex = 1;
             }
             const searchParams = this.searchParams;
             const where = [];
@@ -339,7 +392,7 @@ export default {
                 where.push(`address LIKE '%${searchParams.address}%'`);
             }
             if (where.length > 0) {
-                whereSQL = "WHERE" + where.join("AND");
+                whereSQL = "WHERE " + where.join("AND ");
             }
             const orderSQL = `ORDER BY id ${searchParams.sort} `;
             const rowSQL =
@@ -383,6 +436,7 @@ export default {
                     const select = `SELECT COUNT(id) AS totalCount from PERSON WHERE house = '${
                         modalParams.house
                     }'`;
+                    this.$logger(select);
                     this.$db.get(select, (err, res) => {
                         if (err) {
                             this.$logger(err);
@@ -428,20 +482,107 @@ export default {
                 }
             });
         },
+        editConfirm() {
+            this.$refs.formValidate.validate(valid => {
+                if (valid) {
+                    this.modalBtnLoading = true;
+                    const modalParams = this.modalParams;
+                    const select = `SELECT id from PERSON WHERE house = '${
+                        modalParams.house
+                    }'`;
+                    this.$db.get(select, (err, res) => {
+                        if (err) {
+                            this.$logger(err);
+                            this.$Notice.error({
+                                title: "搜索失败",
+                                desc: err
+                            });
+                        } else {
+                            if (res && res.id !== modalParams.id) {
+                                this.$Message.warning({
+                                    content: "户主已存在"
+                                });
+                                this.modalBtnLoading = false;
+                            } else {
+                                const time = Math.round(
+                                    new Date().getTime() / 1000
+                                );
+                                const update = `UPDATE PERSON SET house='${
+                                    modalParams.house
+                                }',contact='${modalParams.contact}',address='${
+                                    modalParams.address
+                                }',remark='${
+                                    modalParams.remark
+                                }',update_time='${time}'WHERE id = ${
+                                    modalParams.id
+                                }`;
+                                this.$logger(update);
+                                this.$db.run(update, err => {
+                                    if (err) {
+                                        this.$logger(err);
+                                        this.$Notice.error({
+                                            title: "修改失败",
+                                            desc: err
+                                        });
+                                    } else {
+                                        this.modalShow = false;
+                                        this.$Message.success({
+                                            content: "修改成功"
+                                        });
+                                        this.getDataList();
+                                    }
+                                    this.modalBtnLoading = false;
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+        },
+        del(id) {
+            const del = `DELETE FROM PERSON WHERE id = ${id}`;
+            this.$logger(del);
+            this.$db.run(del, err => {
+                if (err) {
+                    this.$logger(err);
+                    this.$db.run("ROLLBACK");
+                    this.$Notice.error({
+                        title: "删除失败",
+                        desc: err
+                    });
+                } else {
+                    this.$Message.success({
+                        content: "删除成功"
+                    });
+                    this.getDataList();
+                }
+            });
+        },
+        edit(row) {
+            this.$refs.formValidate.resetFields();
+            this.modalParams = {
+                id: row.id,
+                house: row.house,
+                contact: row.contact,
+                address: row.address,
+                remark: row.remark
+            };
+            this.modalShow = true;
+        },
         sort(v) {
             this.search.sort = v.order.toUpperCase();
-            this.getDataList("search");
+            this.getDataList();
         },
         tableRowDblClick(row) {
             console.log(row);
         },
         getDataListOnPageChange(pageSize) {
             this.search.pageSize = pageSize;
-            this.getDataList("search");
+            this.getDataList();
         }
     },
     created() {
-        this.getDataList("search");
+        this.getDataList();
     }
 };
 </script>
