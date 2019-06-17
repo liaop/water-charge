@@ -21,9 +21,9 @@ function createWindow () {
     frame: false,
     useContentSize: true,
     width: 1366,
-    height: 768,
+    height: 798,
     minWidth: 800,
-    minHeight: 600,
+    minHeight: 700,
     show: false
   })
 

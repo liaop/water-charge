@@ -36,7 +36,7 @@
                 v-model="search.remark"
             />
             <Button @click="getDataList" type="primary" icon="md-search"></Button>
-            <Button type="primary" @click="modalShow = true" icon="md-add"></Button>
+            <Button type="primary" @click="add" icon="md-add"></Button>
         </div>
         <Modal
             v-model="modalShow"
@@ -126,7 +126,7 @@
     </div>
 </template>
 <script>
-import util from "../../utils/util";
+import {dateFilter, time} from "../../utils/util";
 export default {
     data() {
         return {
@@ -192,12 +192,13 @@ export default {
             search: {
                 house: "",
                 remark: "",
-                sort: "ASC",
+                sort: "DESC",
                 address: "",
                 contact: "",
                 pageIndex: 1,
                 pageSize: 10
             },
+            searchParams: {},
             dataList_table_column: [
                 {
                     title: "户主",
@@ -261,7 +262,7 @@ export default {
                     render: (h, params) => {
                         return h(
                             "span",
-                            util.dateFilter(params.row.create_time)
+                            dateFilter(params.row.create_time)
                         );
                     }
                 },
@@ -273,7 +274,7 @@ export default {
                     render: (h, params) => {
                         return h(
                             "span",
-                            util.dateFilter(params.row.update_time)
+                            dateFilter(params.row.update_time)
                         );
                     }
                 },
@@ -451,9 +452,6 @@ export default {
                                 });
                                 this.modalBtnLoading = false;
                             } else {
-                                const time = Math.round(
-                                    new Date().getTime() / 1000
-                                );
                                 const insert = `INSERT INTO PERSON (house,contact,address,remark,create_time,update_time) VALUES 
                                 ('${modalParams.house}','${
                                     modalParams.contact
@@ -473,6 +471,7 @@ export default {
                                         this.$Message.success({
                                             content: "新增成功"
                                         });
+                                        this.getDataList();
                                     }
                                     this.modalBtnLoading = false;
                                 });
@@ -504,9 +503,6 @@ export default {
                                 });
                                 this.modalBtnLoading = false;
                             } else {
-                                const time = Math.round(
-                                    new Date().getTime() / 1000
-                                );
                                 const update = `UPDATE PERSON SET house='${
                                     modalParams.house
                                 }',contact='${modalParams.contact}',address='${
@@ -539,13 +535,16 @@ export default {
                 }
             });
         },
+        add() {
+            this.$refs.formValidate.resetFields();
+            this.modalShow = true;
+        },
         del(id) {
             const del = `DELETE FROM PERSON WHERE id = ${id}`;
             this.$logger(del);
             this.$db.run(del, err => {
                 if (err) {
                     this.$logger(err);
-                    this.$db.run("ROLLBACK");
                     this.$Notice.error({
                         title: "删除失败",
                         desc: err

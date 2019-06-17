@@ -23,3 +23,7 @@ exports.getRegexp = type => {
       return null;
   }
 };
+
+exports.time = Math.round(
+  new Date().getTime() / 1000
+);

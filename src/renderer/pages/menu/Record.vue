@@ -1,65 +1,77 @@
 <template>
-    <div>
-        <Table border ref="selection" :columns="columns4" :data="data1"></Table>
-        <Button @click="handleSelectAll(true)">Set all selected</Button>
-        <Button @click="handleSelectAll(false)">Cancel all selected</Button>
-    </div>
+    <Tabs v-model="cur" type="card" @on-tab-remove="closeTab">
+        <TabPane
+            closable
+            v-for="tab in tabs"
+            :name="tab.value.toString()"
+            :key="tab.value"
+            :label="tab.label"
+        >
+            <Content :id="tab.value"></Content>
+        </TabPane>
+        <Select
+            slot="extra"
+            :label-in-value="true"
+            :transfer="true"
+            @on-change="openDetail"
+            filterable
+        >
+            <Option v-for="house in houses" :value="house.id" :key="house.id">{{ house.house }}</Option>
+        </Select>
+    </Tabs>
 </template>
 <script>
-    export default {
-        data () {
-            return {
-                columns4: [
-                    {
-                        type: 'selection',
-                        width: 60,
-                        align: 'center'
-                    },
-                    {
-                        title: 'Name',
-                        key: 'name'
-                    },
-                    {
-                        title: 'Age',
-                        key: 'age'
-                    },
-                    {
-                        title: 'Address',
-                        key: 'address'
-                    }
-                ],
-                data1: [
-                    {
-                        name: 'John Brown',
-                        age: 18,
-                        address: 'New York No. 1 Lake Park',
-                        date: '2016-10-03'
-                    },
-                    {
-                        name: 'Jim Green',
-                        age: 24,
-                        address: 'London No. 1 Lake Park',
-                        date: '2016-10-01'
-                    },
-                    {
-                        name: 'Joe Black',
-                        age: 30,
-                        address: 'Sydney No. 1 Lake Park',
-                        date: '2016-10-02'
-                    },
-                    {
-                        name: 'Jon Snow',
-                        age: 26,
-                        address: 'Ottawa No. 2 Lake Park',
-                        date: '2016-10-04'
-                    }
-                ]
-            }
+import Content from "./RecordContent";
+export default {
+    data() {
+        return {
+            houses: [],
+            tabs: [],
+            cur: 0
+        };
+    },
+    components: {
+        Content
+    },
+    methods: {
+        getHouses() {
+            const select = "SELECT id,house FROM PERSON";
+            this.$logger(select);
+            this.$db.all(select, (err, res) => {
+                if (err) {
+                    this.$logger(err);
+                    this.$Notice.error({
+                        title: "查询失败",
+                        desc: err
+                    });
+                } else {
+                    this.houses = res;
+                }
+            });
         },
-        methods: {
-            handleSelectAll (status) {
-                this.$refs.selection.selectAll(status);
+        closeTab(v) {
+            const arr = this.tabs.filter(item => parseInt(v) !== item.value);
+            this.tabs = arr;
+            sessionStorage.setItem("list", JSON.stringify(arr));
+        },
+        openDetail(v) {
+            if (!this.tabs.find(item => item.value === v.value)) {
+                this.tabs.push(v);
+                this.cur = v.value.toString();
+                sessionStorage.setItem("list", JSON.stringify(this.tabs));
+            } else {
+                this.tabs.map(item => {
+                    if (item.value === v.value)
+                        this.cur = item.value.toString();
+                });
             }
         }
+    },
+    created() {
+        this.getHouses();
+        if (sessionStorage.getItem("list")) {
+            this.tabs = JSON.parse(sessionStorage.getItem("list"));
+        }
     }
+};
 </script>
